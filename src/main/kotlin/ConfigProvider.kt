@@ -1,4 +1,4 @@
-abstract class ConfigProvider <K, V> {
+abstract class ConfigProvider <K, V : ConfigObject> {
 
     val SHOULD_DELETE_KEY = 0
     val SHOULD_UPDATE_KEY = 1
@@ -8,13 +8,16 @@ abstract class ConfigProvider <K, V> {
 
     protected var state : State = State.READY
 
-    protected val objectPool : ObjectPool<K, V> = ObjectPool()
+    protected val configObjectPool: ConfigObjectPool<K, V> = ConfigObjectPool()
 
     protected abstract fun doResolve()
 
+    val config : ConfigObjectPool<K, V>
+        get() = configObjectPool
+
     @Throws
     @Synchronized
-    fun resolve() {
+    open fun resolve() {
         when (state) {
             State.RESOLVING -> throw ResolvingInProgressConfigProviderException("The config provider is resolving")
             State.FAILURE -> throw ResolvedFailureConfigProviderException("The config provider is in non-recoverable failure state")
@@ -31,9 +34,10 @@ abstract class ConfigProvider <K, V> {
         }
     }
 
-    protected fun processUpdate(newPool : ObjectPool<K, V>) {
-        val objectPoolKeys = objectPool.keys
-        val newPoolKeys = newPool.keys
+    @Synchronized
+    protected open fun processUpdate(newPoolConfig: ConfigObjectPool<K, V>) {
+        val objectPoolKeys = configObjectPool.keys
+        val newPoolKeys = newPoolConfig.keys
 
         val addUpdDel = objectPoolKeys
             .union(newPoolKeys)
@@ -47,8 +51,9 @@ abstract class ConfigProvider <K, V> {
         val keysToBeUpdated = addUpdDel[SHOULD_UPDATE_KEY]
         val keysToBeDeleted = addUpdDel[SHOULD_DELETE_KEY]
         val keysToBeCreated = addUpdDel[SHOULD_CREATE_KEY]
+
+        keysToBeDeleted?.forEach { configObjectPool[it]!!.onDelete(); configObjectPool.remove(it) }
+        keysToBeUpdated?.forEach { configObjectPool.get(it)?.onUpdate(newPoolConfig[it]) }
+        keysToBeCreated?.forEach { configObjectPool[it] = newPoolConfig[it]!! }
     }
 }
-
-class ResolvingInProgressConfigProviderException(message : String) : Exception(message)
-class ResolvedFailureConfigProviderException(message : String) : Exception(message)

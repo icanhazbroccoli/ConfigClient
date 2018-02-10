@@ -40,6 +40,3 @@ class PollConfigProviderWatcher(val timerPeriod : Long, val callback: TimerTask.
         }
     }
 }
-
-class ProviderWatcherAlreadyStartedException(message : String) : Exception(message)
-class ProviderWatcherNotRunningException(message : String) : Exception(message)

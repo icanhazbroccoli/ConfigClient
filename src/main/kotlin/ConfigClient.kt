@@ -1,8 +1,8 @@
 class ConfigClient {
 
-    @Throws
-    fun connect(service: ConfigProvider) {
-
-    }
+//    @Throws
+//    fun connect(service: ConfigProvider) {
+//
+//    }
 
 }

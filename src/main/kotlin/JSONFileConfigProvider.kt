@@ -2,9 +2,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.nio.charset.Charset
-import java.util.concurrent.TimeUnit
 
-class JSONFileConfigProvider <K, V> (
+class JSONFileConfigProvider <K, V : ConfigObject> (
     val file : File,
     val syncStrategy: ConfigProviderSyncStrategy = ConfigProviderSyncStrategy.NONE,
     val keyExtractor: KeyExtractor<K, JSONObject>,
@@ -33,7 +32,7 @@ class JSONFileConfigProvider <K, V> (
         val newPoolMap = jsonArray.mapIndexed { index, _ -> jsonArray.getJSONObject(index) }
             .associateBy({ keyExtractor.extractKey(it) }, { valueExtractor.extractValue(it) })
 
-        processUpdate(ObjectPool(newPoolMap))
+        processUpdate(ConfigObjectPool(newPoolMap))
     }
 }
 

@@ -1,0 +1,5 @@
+class JSONFileDoesNotExistException(message: String) : Exception(message)
+class ResolvingInProgressConfigProviderException(message : String) : Exception(message)
+class ResolvedFailureConfigProviderException(message : String) : Exception(message)
+class ProviderWatcherAlreadyStartedException(message : String) : Exception(message)
+class ProviderWatcherNotRunningException(message : String) : Exception(message)

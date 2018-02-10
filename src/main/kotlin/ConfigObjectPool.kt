@@ -1,4 +1,4 @@
-class ObjectPool<K, V>(source: Map<K, V>) : HashMap<K, V>() {
+class ConfigObjectPool<K, V>(source: Map<K, V>) : HashMap<K, V>() {
     init {
         this.putAll(source)
     }
