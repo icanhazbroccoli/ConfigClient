@@ -1,4 +1,6 @@
-abstract class ConfigProvider <K, V : ConfigObject> {
+abstract class ConfigProvider <K, V : ConfigObject> (
+    syncStrategy: ConfigProviderSyncStrategy = ConfigProviderSyncStrategy.NONE
+) {
 
     val SHOULD_DELETE_KEY = 0
     val SHOULD_UPDATE_KEY = 1
@@ -10,10 +12,16 @@ abstract class ConfigProvider <K, V : ConfigObject> {
 
     protected val configObjectPool: ConfigObjectPool<K, V> = ConfigObjectPool()
 
-    protected abstract fun doResolve()
-
     val config : ConfigObjectPool<K, V>
         get() = configObjectPool
+
+    protected var watcher : ConfigProviderWatcher = when (syncStrategy) {
+        ConfigProviderSyncStrategy.NONE -> NoneConfigProviderWatcher()
+        ConfigProviderSyncStrategy.POLL -> PollConfigProviderWatcher(1_000, { TODO() })
+        else -> NoneConfigProviderWatcher()
+    }
+
+    protected abstract fun doResolve()
 
     @Throws
     @Synchronized

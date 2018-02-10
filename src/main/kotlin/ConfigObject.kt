@@ -1,4 +1,4 @@
 interface ConfigObject {
-    fun onUpdate(o : Any?)
-    fun onDelete()
+    fun onUpdate(o : Any?) {}
+    fun onDelete() {}
 }
