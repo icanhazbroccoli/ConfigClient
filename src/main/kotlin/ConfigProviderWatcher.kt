@@ -4,29 +4,23 @@ import kotlin.concurrent.timer
 
 interface ConfigProviderWatcher {
     @Throws
-    fun watch()
+    fun watch() {}
 
     @Throws
-    fun stop()
+    fun stop() {}
 }
 
-class NoneConfigProviderWatcher() : ConfigProviderWatcher {
-    override fun watch() {
-    }
+class NoneConfigProviderWatcher : ConfigProviderWatcher
 
-    override fun stop() {
-    }
-}
+open class PollConfigProviderWatcher(val timerPeriod : Long, val callback: TimerTask.() -> Unit) : ConfigProviderWatcher {
 
-class PollConfigProviderWatcher(val timerPeriod : Long, val callback: TimerTask.() -> Unit) : ConfigProviderWatcher {
-
-    val isWatching = AtomicBoolean(false)
+    protected val isWatching = AtomicBoolean(false)
 
     var t : Timer? = null
 
     override fun watch() {
         if (isWatching.compareAndSet(false, true)) {
-            t = timer(daemon = true, period = timerPeriod, action = callback)
+            t = timer(daemon = true, period = timerPeriod, action = callback, initialDelay = timerPeriod)
         } else {
             throw ProviderWatcherAlreadyStartedException("The watcher has already been started")
         }

@@ -1,5 +1,6 @@
 abstract class ConfigProvider <K, V : ConfigObject> (
-    syncStrategy: ConfigProviderSyncStrategy = ConfigProviderSyncStrategy.NONE
+    syncStrategy: ConfigProviderSyncStrategy = ConfigProviderSyncStrategy.NONE,
+    refreshInterval : Long? = null
 ) {
 
     val SHOULD_DELETE_KEY = 0
@@ -17,7 +18,7 @@ abstract class ConfigProvider <K, V : ConfigObject> (
 
     protected var watcher : ConfigProviderWatcher = when (syncStrategy) {
         ConfigProviderSyncStrategy.NONE -> NoneConfigProviderWatcher()
-        ConfigProviderSyncStrategy.POLL -> PollConfigProviderWatcher(1_000, { TODO() })
+        ConfigProviderSyncStrategy.POLL -> PollConfigProviderWatcher(refreshInterval ?: 1_000, { resolve() })
         else -> NoneConfigProviderWatcher()
     }
 
@@ -37,8 +38,10 @@ abstract class ConfigProvider <K, V : ConfigObject> (
         try {
             doResolve()
             state = State.RESOLVED
+            watcher.watch()
         } catch (e : Exception) {
             state = State.FAILURE
+            watcher.stop()
         }
     }
 

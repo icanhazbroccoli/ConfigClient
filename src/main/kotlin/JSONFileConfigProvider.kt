@@ -7,8 +7,9 @@ class JSONFileConfigProvider <K, V : ConfigObject> (
     val file : File,
     val syncStrategy: ConfigProviderSyncStrategy = ConfigProviderSyncStrategy.NONE,
     val keyExtractor: KeyExtractor<K, JSONObject>,
-    val valueExtractor: ValueExtractor<V, JSONObject>
-) : ConfigProvider<K, V>(syncStrategy) {
+    val valueExtractor: ValueExtractor<V, JSONObject>,
+    refreshInterval : Long? = null
+) : ConfigProvider<K, V>(syncStrategy = syncStrategy, refreshInterval = refreshInterval) {
 
     val DEFAULT_CHARSET : Charset = Charsets.UTF_8
 
@@ -18,6 +19,7 @@ class JSONFileConfigProvider <K, V : ConfigObject> (
         }
         val jsonStr = file.readText(DEFAULT_CHARSET)
         val jsonArray = JSONArray(jsonStr)
+
         val newPoolMap = jsonArray.mapIndexed { index, _ -> jsonArray.getJSONObject(index) }
             .associateBy({ keyExtractor.extractKey(it) }, { valueExtractor.extractValue(it) })
 
