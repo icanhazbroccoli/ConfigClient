@@ -11,12 +11,9 @@ class JSONFileConfigProvider <K, V> (
     val valueExtractor: ValueExtractor<V, JSONObject>
 ) : ConfigProvider<K, V>() {
 
-    lateinit private var watcher : ConfigProviderWatcher
+    private var watcher : ConfigProviderWatcher
 
     val DEFAULT_CHARSET : Charset = Charsets.UTF_8
-
-    enum class State { READY, RESOLVING, RESOLVED, FAILURE }
-    var state : State = State.READY
 
     init {
         watcher = when (syncStrategy) {
@@ -26,29 +23,17 @@ class JSONFileConfigProvider <K, V> (
         }
     }
 
-    @Throws
-    @Synchronized
-    fun resolve() {
 
-        when (state) {
-            State.RESOLVING -> throw ResolvingInProgressConfigProviderException("The config provider is resolving")
-            State.FAILURE -> throw ResolvedFailureConfigProviderException("The config provider is in non-recoverable failure state")
-            else -> null
+    override fun doResolve() {
+        if (!file.exists()) {
+            throw JSONFileDoesNotExistException("File $file could not be found")
         }
+        val jsonStr = file.readText(DEFAULT_CHARSET)
+        val jsonArray = JSONArray(jsonStr)
+        val newPoolMap = jsonArray.mapIndexed { index, _ -> jsonArray.getJSONObject(index) }
+            .associateBy({ keyExtractor.extractKey(it) }, { valueExtractor.extractValue(it) })
 
-        try {
-            if (!file.exists()) {
-                throw JSONFileDoesNotExistException("File $file could not be found")
-            }
-            val jsonStr = file.readText(DEFAULT_CHARSET)
-            val jsonArray = JSONArray(jsonStr)
-            val newPool = jsonArray.mapIndexed { index, _ -> jsonArray.getJSONObject(index) }
-                .associateBy({ keyExtractor.extractKey(it) }, { valueExtractor.extractValue(it) })
-        } catch (e : Exception) {
-            state = State.FAILURE
-        }
+        processUpdate(ObjectPool(newPoolMap))
     }
 }
 
-class ResolvingInProgressConfigProviderException(message : String) : Exception(message)
-class ResolvedFailureConfigProviderException(message : String) : Exception(message)
