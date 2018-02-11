@@ -1,6 +1,5 @@
 abstract class ConfigProvider <K, V : ConfigObject> (
-    syncStrategy: ConfigProviderSyncStrategy = ConfigProviderSyncStrategy.NONE,
-    refreshInterval : Long? = null
+    open val watcherStrategy: ConfigProviderWatcherStrategy = ConfigProviderWatcherStrategy.NONE
 ) {
 
     val SHOULD_DELETE_KEY = 0
@@ -16,17 +15,40 @@ abstract class ConfigProvider <K, V : ConfigObject> (
     val config : ConfigObjectPool<K, V>
         get() = configObjectPool
 
-    protected var watcher : ConfigProviderWatcher = when (syncStrategy) {
-        ConfigProviderSyncStrategy.NONE -> NoneConfigProviderWatcher()
-        ConfigProviderSyncStrategy.POLL -> PollConfigProviderWatcher(refreshInterval ?: 1_000, { resolve() })
-        else -> NoneConfigProviderWatcher()
-    }
+    protected var watcher : ConfigProviderWatcher? = null
 
     protected abstract fun doResolve()
+
+    @Synchronized
+    @Throws
+    protected open fun runWatcher() {
+
+        if (watcher != null) {
+            println(watcher)
+            throw ConfigWatcherAlreadyExistsException("Watcher has already been initialized")
+        }
+
+        watcher = ConfigProviderWatcherFactory.newWatcher(watcherStrategy, getWatcherArgs())
+
+        watcher!!.onFireUp({ resolve() })
+
+        watcher!!.watch()
+    }
+
+    protected open fun getWatcherArgs() : Map<String, Any?>? { return null }
+
+    @Synchronized
+    @Throws
+    protected open fun stopWatcher() {
+        if (watcher != null) {
+            watcher!!.stop()
+        }
+    }
 
     @Throws
     @Synchronized
     open fun resolve() {
+
         when (state) {
             State.RESOLVING -> throw ResolvingInProgressConfigProviderException("The config provider is resolving")
             State.FAILURE -> throw ResolvedFailureConfigProviderException("The config provider is in non-recoverable failure state")
@@ -38,10 +60,13 @@ abstract class ConfigProvider <K, V : ConfigObject> (
         try {
             doResolve()
             state = State.RESOLVED
-            watcher.watch()
+            if (watcher == null) {
+                runWatcher()
+            }
         } catch (e : Exception) {
             state = State.FAILURE
-            watcher.stop()
+            println("Problem starting a watcher: ${e.message}")
+//            stopWatcher()
         }
     }
 
